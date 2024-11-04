@@ -118,7 +118,7 @@ const WorldMapChart = () => {
   }, []);
 
   return (
-    <div id="map" ref={mapContainerRef} style={{ height: "500px", width: "500px" }}>
+    <div id="map" ref={mapContainerRef} style={{ height: "600px", width: "800px" }}>
       WorldMap
     </div>
   );
