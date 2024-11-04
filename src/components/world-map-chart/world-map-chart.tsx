@@ -3,19 +3,33 @@ import mapboxgl, { GeoJSONFeature } from "mapbox-gl";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAP_BOX_ACCESS_TOKEN } from "./config/settigns";
-import { DummyData } from "./config/dummy-data";
+import { CountryPolygonData } from "./config/world-map-data";
 
-export const DummGeoJson: GeoJSON.GeoJSON = {
-  ...DummyData,
+const worldData = CountryPolygonData;
+const countryPointData: GeoJSON.GeoJSON = {
+  ...CountryPolygonData,
   // @ts-ignore
-  features: DummyData.features?.map((x, index) => ({ ...x, id: index })),
+  features: CountryPolygonData?.features?.map((feature, index) => {
+    return {
+      ...feature,
+      id: index,
+      geometry: { type: "Point", coordinates: [feature?.properties?.longitude, feature?.properties?.latitude] },
+    };
+  }),
+};
+
+export const worldGeoJson: GeoJSON.GeoJSON = {
+  ...worldData,
+  // @ts-ignore
+  features: worldData.features?.map((x, index) => ({ ...x, id: index })),
 };
 
 export const getTooltipNode = (feature: GeoJSONFeature) => {
   if (feature)
     return `<div style="display:flex;flex-direction:column;row-gap:6px;">
-  <p>ISO: ${feature?.properties?.ISO}</p>
-  <p>NAME_1: ${feature?.properties?.NAME_1}</p>
+  <p>Name: ${feature?.properties?.name}</p>
+  <p>Area: ${feature?.properties?.m1}</p>
+  <p>Population: ${feature?.properties?.m2}</p>
   </div>`;
   else return "";
 };
@@ -33,8 +47,9 @@ const WorldMapChart = () => {
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef?.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: [DummyData.features[0].geometry.coordinates[0][0][0], DummyData.features[0].geometry.coordinates[0][0][1]],
-      zoom: 3,
+      // center: [worldData.features[0].geometry.coordinates[0][0][0], worldData.features[0].geometry.coordinates[0][0][1]],
+      center: [-59.78759765624997, 43.939599609374994],
+      zoom: 1.5,
     });
 
     if (!mapRef.current) return;
@@ -51,19 +66,26 @@ const WorldMapChart = () => {
     mapRef.current.on("load", () => {
       mapRef.current?.addSource("countries", {
         type: "geojson",
-        data: DummGeoJson,
+        data: worldGeoJson,
+      });
+      mapRef.current?.addSource("bubble", {
+        type: "geojson",
+        data: countryPointData,
       });
 
-      // The feature-state dependent fill-opacity expression will render the hover effect
-      // when a feature's hover state is set to true.
       mapRef.current?.addLayer({
         id: "countries-fills",
         type: "fill",
         source: "countries",
         layout: {},
         paint: {
-          "fill-color": "#627BC1",
-          "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.5],
+          "fill-color": [
+            "match",
+            ["get", "name"],
+            ...worldData.features.flatMap((feature) => [feature.properties.name, feature.properties.color]),
+            "#ccc", // fallback color if no match is found
+          ],
+          "fill-opacity": 0.7,
         },
       });
 
@@ -72,7 +94,29 @@ const WorldMapChart = () => {
         type: "line",
         source: "countries",
         layout: {},
-        paint: { "line-color": "#627BC1", "line-width": 2 },
+        paint: {
+          "line-width": 2,
+          "line-color": [
+            "match",
+            ["get", "name"],
+            ...worldData.features.flatMap((feature) => [feature.properties.name, feature.properties.color]),
+            "#ccc", // fallback color if no match is found
+          ],
+          "fill-opacity": 0.7,
+        },
+      });
+      // Add a circle layer to represent population bubbles
+      mapRef.current?.addLayer({
+        id: "population-bubbles",
+        type: "circle",
+        source: "bubble",
+        paint: {
+          "circle-radius": 25,
+          "circle-color": "#007E91", // Color for the bubbles
+          "circle-opacity": 0.5, // Opacity of the circles
+          "circle-stroke-color": "#007E91",
+          "circle-stroke-width": 1,
+        },
       });
 
       mapRef.current?.on("mousemove", "countries-fills", (e) => {
@@ -113,12 +157,12 @@ const WorldMapChart = () => {
         hoveredPolygonId = null;
       });
     });
-
+    // mapRef.current.scrollZoom.disable();
     return () => mapRef.current?.remove();
   }, []);
 
   return (
-    <div id="map" ref={mapContainerRef} style={{ height: "600px", width: "800px" }}>
+    <div id="map" ref={mapContainerRef} style={{ height: "600px", width: "1200px", margin: "50px auto" }}>
       WorldMap
     </div>
   );
