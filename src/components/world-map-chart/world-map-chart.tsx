@@ -3,7 +3,6 @@ import mapboxgl, { GeoJSONFeature } from "mapbox-gl";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAP_BOX_ACCESS_TOKEN } from "./config/settigns";
-// import { worldData } from "./config/dummy-data";
 import { CountryPolygonData } from "./config/world-map-data";
 
 const worldData = CountryPolygonData;
@@ -14,13 +13,12 @@ const countryPointData: GeoJSON.GeoJSON = {
     return {
       ...feature,
       id: index,
-      // geometry: { type: "Point", coordinates: [-87, 11] },
       geometry: { type: "Point", coordinates: [feature?.properties?.longitude, feature?.properties?.latitude] },
     };
   }),
 };
 
-export const DummGeoJson: GeoJSON.GeoJSON = {
+export const worldGeoJson: GeoJSON.GeoJSON = {
   ...worldData,
   // @ts-ignore
   features: worldData.features?.map((x, index) => ({ ...x, id: index })),
@@ -68,7 +66,7 @@ const WorldMapChart = () => {
     mapRef.current.on("load", () => {
       mapRef.current?.addSource("countries", {
         type: "geojson",
-        data: DummGeoJson,
+        data: worldGeoJson,
       });
       mapRef.current?.addSource("bubble", {
         type: "geojson",
@@ -159,7 +157,7 @@ const WorldMapChart = () => {
         hoveredPolygonId = null;
       });
     });
-    mapRef.current.scrollZoom.disable();
+    // mapRef.current.scrollZoom.disable();
     return () => mapRef.current?.remove();
   }, []);
 
